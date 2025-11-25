@@ -15,4 +15,3 @@ export async function conn() {
     }
     return connection;
 };
-

@@ -1,5 +1,5 @@
 import { tool } from "langchain";
-import { conn } from "../db";
+import { conn } from "./db";
 
 
 export const executeQuery = tool(
