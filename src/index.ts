@@ -1,10 +1,12 @@
 // import promptSync from "prompt-sync";
 import { agent } from "./agent";
 import Fastify from "fastify";
+import { authenticate, generateToken } from "./auth";
 
 
 // Initialize Fastify app
 const app = Fastify();
+
 
 //const prompt = promptSync();
 const config = {
@@ -13,7 +15,8 @@ const config = {
 };
 
 // Define a POST endpoint to handle user questions
-app.post("/ask", async (request, reply) => {
+app.post("/ask", { preHandler: authenticate }, async (request, reply) => {
+    
     const { question } = request.body as { question: string };
     const response = await agent.invoke(
         { messages: [{ role: "user", content: question }] },
@@ -28,10 +31,20 @@ app.post("/ask", async (request, reply) => {
     return reply.send({ answer: answer_text });
 });
 
-app.get("/", async (request, reply) => {
+app.get("/", { preHandler: authenticate }, async (request, reply) => {
+    
+    // console.log("Authorization Header:", auth);
     return reply.send({ message: `It feels so good to be a developer. 
         \nThank you so much for helping me get started. 
         \nExploring these concepts beyound the low code platform is pure joy. ` });
+});
+
+app.post("/login", async (request, reply) => {
+    const verify: string = generateToken(request.body);
+    if (!verify) {
+        return reply.code(401).send({ error: "Invalid credentials" });
+    }
+    return reply.send({ message: "User logged in successfully.", token: verify });
 });
 
 // Start the server
