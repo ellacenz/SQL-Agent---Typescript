@@ -1,7 +1,9 @@
 // import promptSync from "prompt-sync";
 import { agent } from "./agent";
 import Fastify from "fastify";
-import { authenticate, generateToken } from "./auth";
+import { authenticate, generateToken, verifyUserCredentials } from "./auth";
+import { createUser } from "./db";
+
 
 
 // Initialize Fastify app
@@ -40,11 +42,37 @@ app.get("/", { preHandler: authenticate }, async (request, reply) => {
 });
 
 app.post("/login", async (request, reply) => {
+    if (!request.body) {
+        return reply.code(400).send({ error: "Username and password are required" });
+    }
+
+    const isUserValid =  await verifyUserCredentials(request.body);
+
+    if (!isUserValid) {
+        return reply.code(401).send({ error: "Invalid credentials" });
+    }
+
     const verify: string = generateToken(request.body);
     if (!verify) {
         return reply.code(401).send({ error: "Invalid credentials" });
     }
     return reply.send({ message: "User logged in successfully.", token: verify });
+});
+
+
+// create user endpoint
+app.post("/create-user", async (request, reply) => {
+    if (!request.body) {
+        return reply.code(400).send({ error: "Username and password are required" });
+    }
+
+    try {
+        await createUser(request.body);
+        return reply.send({ message: "User created successfully." });
+    } catch (error) {
+        console.error("Error creating user:", (error as Error).message);
+        return reply.code(500).send({ error: "Internal Server Error" });
+    }
 });
 
 // Start the server
