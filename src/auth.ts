@@ -1,11 +1,13 @@
 import jwt from "jsonwebtoken";
 import { FastifyRequest, FastifyReply } from "fastify";
+import { conn } from "./db";
+import bcrypt from "bcrypt";
 
 //Function to generate a JWT token (generate once and store in .env)
 export function generateToken(requestBody: any): string {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not defined in environment variables");
-  }   
+  }
   const token = jwt.sign(
     { username: requestBody.username, password: requestBody.password },
     process.env.JWT_SECRET!,
@@ -14,10 +16,9 @@ export function generateToken(requestBody: any): string {
   return token;
 }
 
-const token = process.env.JWT_TOKEN; 
 
 export function authenticate(req: FastifyRequest, res: FastifyReply, done: () => void) {
-  
+
   const header = req.headers.authorization;
 
   if (!header?.startsWith("Bearer ")) {
@@ -25,11 +26,43 @@ export function authenticate(req: FastifyRequest, res: FastifyReply, done: () =>
     return;
   }
 
-  const tokenReceived = header.split(" ")[1];
+  const tokenReceived: any = header.split(" ")[1];
 
-  if (tokenReceived !== token) {
-    res.code(403).send({ error: "Forbidden" });
-    return;
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is not defined in environment variables");
   }
-  done();
+  if (!tokenReceived) {
+    return res.status(401).send({ error: "No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(tokenReceived, process.env.JWT_SECRET!);
+    console.log("Decoded JWT:", decoded);
+    done();
+  } catch (err) {
+    return res.status(403).send({ error: "Invalid token" });
+  }
+}
+
+export async function verifyUserCredentials(reqBody: any): Promise<boolean> {
+  const connection = (await conn()) as any;
+  const { username, password } = reqBody;
+
+  console.log({ "Verifying user": username, "password": password });
+  const [result] = await connection.execute('SELECT * FROM users WHERE username = ?', [username]);
+  console.log("verified user: ", result);
+  if ((result as any[]).length === 0) {
+    return false;
+  }
+
+  const user = result[0];
+
+  const valid = await bcrypt.compare(password, user.password);
+  
+  if(valid){
+    return true;
+  }else{
+    return false;
+  }
+
 }
