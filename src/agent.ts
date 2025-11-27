@@ -1,7 +1,7 @@
 import { createAgent } from "langchain";
 import { MemorySaver } from "@langchain/langgraph";
 import { model } from "./models";
-import { execute } from "./tools";
+import { executeQuery } from "./tools";
 
 
 const systemPrompt = `You are an expert SQL agent designed to assist users with SQL-related tasks. Your primary role is to understand user queries, generate accurate SQL statements, and provide insightful explanations or recommendations based on the database schema and user requirements.
@@ -24,10 +24,11 @@ Always ensure that your responses are clear, concise, and tailored to the user's
 
 const checkpointer = new MemorySaver();
 
+console.log("Initializing agent...");
 export const agent: any = createAgent({
   model: model,
   systemPrompt: systemPrompt,
-  tools: [execute],
+  tools: [executeQuery],
   checkpointer,
 })
 
